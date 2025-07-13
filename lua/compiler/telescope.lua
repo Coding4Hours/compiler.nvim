@@ -1,4 +1,4 @@
---- ### Frontend for compiler.nvim using snacks
+--- ### Frontend for compiler.nvim using vim.ui.select
 
 local M = {}
 
@@ -12,7 +12,6 @@ function M.show()
   end
 
   -- Dependencies
-  local snacks = require("snacks")
   local utils = require("compiler.utils")
   local utils_bau = require("compiler.utils-bau")
 
@@ -57,36 +56,33 @@ function M.show()
   -- ========================================================================
 
   --- On option selected → Run action depending of the language.
-  local function on_option_selected(selected)
-    if not selected or selected.value == "separator" then return end
+  local function on_option_selected(selection)
+    if not selection or selection.value == "separator" then return end
 
-    local selection = selected
-    if selection then
-      -- Do the selected option belong to a build automation utility?
-      local bau = nil
-      for _, value in ipairs(language.options) do
-        if value.text == selection.text then
-          bau = value.bau
-        end
+    -- Do the selected option belong to a build automation utility?
+    local bau = nil
+    for _, value in ipairs(language.options) do
+      if value.text == selection.text then
+        bau = value.bau
       end
+    end
 
-      if bau then -- call the bau backend.
-        local bau_mod = utils_bau.require_bau(bau)
-        if bau_mod then bau_mod.action(selection.value) end
-        _G.compiler_redo_selection = nil
-        _G.compiler_redo_bau_selection = selection.value
-        _G.compiler_redo_bau = bau_mod
-      else -- call the language backend.
-        language.action(selection.value)
-        _G.compiler_redo_selection = selection.value
-        _G.compiler_redo_filetype = filetype
-        _G.compiler_redo_bau_selection = nil
-        _G.compiler_redo_bau = nil
-      end
+    if bau then -- call the bau backend.
+      local bau_mod = utils_bau.require_bau(bau)
+      if bau_mod then bau_mod.action(selection.value) end
+      _G.compiler_redo_selection = nil
+      _G.compiler_redo_bau_selection = selection.value
+      _G.compiler_redo_bau = bau_mod
+    else -- call the language backend.
+      language.action(selection.value)
+      _G.compiler_redo_selection = selection.value
+      _G.compiler_redo_filetype = filetype
+      _G.compiler_redo_bau_selection = nil
+      _G.compiler_redo_bau = nil
     end
   end
 
-  -- SHOW SNACKS PICKER
+  -- SHOW VIM.UI.SELECT
   -- ========================================================================
   local function open_picker()
     local entries = {}
@@ -98,9 +94,11 @@ function M.show()
       end
     end
 
-    snacks.select(entries, {
-      prompt = "Compiler",
-      kind = "compiler",
+    vim.ui.select(entries, {
+      prompt = "Compiler Options",
+      format_item = function(item)
+        return item.text
+      end,
     }, function(choice)
       on_option_selected(choice)
     end)
